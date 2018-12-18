@@ -1,7 +1,6 @@
 <?php
 namespace WapplerSystems\Realurl404Multilingual\Hooks;
 
-
 /***************************************************************
  * Copyright notice
  *
@@ -30,15 +29,19 @@ namespace WapplerSystems\Realurl404Multilingual\Hooks;
 use TYPO3\CMS\Core\Cache\CacheManager;
 use \TYPO3\CMS\Core\Utility\GeneralUtility;
 
+/**
+ * Class ClearCachePostProc
+ * @package WapplerSystems\Realurl404Multilingual\Hooks
+ */
 class ClearCachePostProc
 {
-
+    /**
+     * Flush 404 page cache on clear cache
+     */
     public static function clearCachePostProc()
     {
         /** @var \TYPO3\CMS\Core\Cache\Frontend\FrontendInterface $cache */
         $cache = GeneralUtility::makeInstance(CacheManager::class)->getCache('realurl_404_multilingual');
         $cache->flush();
-
     }
-
 }
