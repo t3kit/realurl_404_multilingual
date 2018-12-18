@@ -4,7 +4,7 @@ defined('TYPO3_MODE') || die('Access denied.');
 
 call_user_func(function () {
     $GLOBALS['TYPO3_CONF_VARS']['FE']['pageNotFound_handling'] =
-        \WapplerSystems\Realurl404Multilingual\Hooks\FrontendHook::class . '->pageErrorHandler';
+        'USER_FUNCTION:' . \WapplerSystems\Realurl404Multilingual\Hooks\FrontendHook::class . '->pageErrorHandler';
 
     // Caching the 404 pages - default expire 3600 seconds
     if (!is_array($GLOBALS['TYPO3_CONF_VARS']['SYS']['caching']['cacheConfigurations']['realurl_404_multilingual'])) {
