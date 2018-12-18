@@ -27,8 +27,8 @@ namespace WapplerSystems\Realurl404Multilingual\Hooks;
  * script!
  ***************************************************************/
 
+use TYPO3\CMS\Core\Cache\CacheManager;
 use \TYPO3\CMS\Core\Utility\GeneralUtility;
-
 
 class ClearCachePostProc
 {
@@ -36,7 +36,7 @@ class ClearCachePostProc
     public static function clearCachePostProc()
     {
         /** @var \TYPO3\CMS\Core\Cache\Frontend\FrontendInterface $cache */
-        $cache = GeneralUtility::makeInstance('TYPO3\\CMS\\Core\\Cache\\CacheManager')->getCache('realurl_404_multilingual');
+        $cache = GeneralUtility::makeInstance(CacheManager::class)->getCache('realurl_404_multilingual');
         $cache->flush();
 
     }
