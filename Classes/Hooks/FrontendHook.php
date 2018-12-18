@@ -1,4 +1,5 @@
 <?php
+
 namespace WapplerSystems\Realurl404Multilingual\Hooks;
 
 /***************************************************************
@@ -26,10 +27,12 @@ namespace WapplerSystems\Realurl404Multilingual\Hooks;
  * script!
  ***************************************************************/
 
+use TYPO3\CMS\Core\Configuration\ExtensionConfiguration;
 use TYPO3\CMS\Core\Http\RequestFactory;
 use \TYPO3\CMS\Core\Utility\GeneralUtility;
 use \TYPO3\CMS\Core\Utility\HttpUtility;
 use TYPO3\CMS\Core\Cache\CacheManager;
+use TYPO3\CMS\Frontend\Controller\TypoScriptFrontendController;
 
 /**
  *
@@ -61,7 +64,6 @@ class FrontendHook
      */
     protected $config = null;
 
-
     /**
      * initialize host and this->typo3_conf_var_404
      */
@@ -69,16 +71,18 @@ class FrontendHook
     {
         $this->host = GeneralUtility::getIndpEnv('HTTP_HOST');
         // define config for error_404_multilingual
-        $this->config = $this->getConfiguration($GLOBALS['TYPO3_CONF_VARS']['EXTCONF']['realurl_404_multilingual'],
-            $this->host);
-        if (!\is_array($this->config)) {
+        $this->config = $this->getConfiguration(
+            $GLOBALS['TYPO3_CONF_VARS']['EXTCONF']['realurl_404_multilingual'],
+            $this->host
+        );
+        if (!is_array($this->config)) {
             // set the default
-            $this->config = array(
+            $this->config = [
                 'errorPage' => '404/',
                 'unauthorizedPage' => '404/',
-                'redirects' => array(),
+                'redirects' => [],
                 'stringConversion' => 'none',
-            );
+            ];
         }
     }
 
@@ -86,9 +90,9 @@ class FrontendHook
     /**
      * @param $params
      * @throws \Exception
-     * @param \TYPO3\CMS\Frontend\Controller\TypoScriptFrontendController $obj
+     * @param TypoScriptFrontendController $obj
      */
-    public function pageErrorHandler(&$params, \TYPO3\CMS\Frontend\Controller\TypoScriptFrontendController &$obj)
+    public function pageErrorHandler(&$params, TypoScriptFrontendController &$obj)
     {
         if ((int)GeneralUtility::_GP('tx_realurl404multilingual') === 1) {
             // Again landed here -> break
@@ -97,31 +101,25 @@ class FrontendHook
             exit();
         }
 
-        $extConf = unserialize($GLOBALS['TYPO3_CONF_VARS']['EXT']['extConf']['realurl_404_multilingual']);
         $currentUrl = $params['currentUrl'];
-        $reasonText = $params['reasonText'];
         $pageAccessFailureReasons = $params['pageAccessFailureReasons'];
-        $mode = $extConf['mode'];
+        $mode = $this->getExtensionMode();
         $statusCode = $GLOBALS['TYPO3_CONF_VARS']['FE']['pageNotFound_handling_statheader'];
 
-        if (isset($pageAccessFailureReasons['fe_group']) && \array_shift($pageAccessFailureReasons['fe_group']) != 0) {
-
+        if (isset($pageAccessFailureReasons['fe_group']) && array_shift($pageAccessFailureReasons['fe_group']) != 0) {
             $unauthorizedPage = $this->config['unauthorizedPage'];
             $unauthorizedPage = (!$unauthorizedPage ? '401' : $unauthorizedPage);
             $destinationUrl = $this->getDestinationUrl($currentUrl, $unauthorizedPage);
-            $destinationUrl .= '?return_url='.urlencode($currentUrl).'&tx_realurl404multilingual=1';
+            $destinationUrl .= '?return_url=' . urlencode($currentUrl) . '&tx_realurl404multilingual=1';
             //$header = "HTTP/1.0 401 Unauthorized";
             header('Cache-Control: no-store, no-cache, must-revalidate');
             header('Pragma: no-cache');
             $mode = self::MODE_REDIRECT; // force redirect
         } else {
-
             // define the page name
-            $errorpage = $this->config['errorPage'];
-            $errorpage = ($errorpage === '' ? '404' : $errorpage);
-            $destinationUrl = $this->getDestinationUrl($currentUrl, $errorpage);
+            $errorPage = $this->config['errorPage'] ?: '404';
+            $destinationUrl = $this->getDestinationUrl($currentUrl, $errorPage);
         }
-
 
         switch ($mode) {
             case self::MODE_REDIRECT:
@@ -136,20 +134,22 @@ class FrontendHook
 
     /**
      * get page and echo it
+     *
      * @param $url404 string $url404 404 page url
      * @param $header string http header
      * @return void
      */
     private function getPageAndDisplay($url404, $header)
     {
-
         header($header);
 
         // check cache
         /** @var \TYPO3\CMS\Core\Cache\Frontend\FrontendInterface $cache */
         $cache = GeneralUtility::makeInstance(CacheManager::class)->getCache('realurl_404_multilingual');
-        $cacheKey = hash('sha1',
-            $url404 . '-' . ($GLOBALS['TSFE']->fe_user->user ? $GLOBALS['TSFE']->fe_user->user['uid'] : ''));
+        $cacheKey = hash(
+            'sha1',
+            $url404 . '-' . ($GLOBALS['TSFE']->fe_user->user ? $GLOBALS['TSFE']->fe_user->user['uid'] : '')
+        );
         if ($cache->has($cacheKey)) {
             $content = $cache->get($cacheKey);
         }
@@ -157,14 +157,12 @@ class FrontendHook
             $content = $this->getUrl($url404);
             if (!empty($content)) {
                 switch ($this->config['stringConversion']) {
-                    case 'utf8_encode' : {
+                    case 'utf8_encode':
                         $content = utf8_encode($content);
                         break;
-                    }
-                    case 'utf8_decode' : {
+                    case 'utf8_decode':
                         $content = utf8_decode($content);
                         break;
-                    }
                 }
 
                 $cache->set($cacheKey, $content, array());
@@ -198,12 +196,12 @@ class FrontendHook
      */
     private function getConfiguration($array = array(), $key = '_DEFAULT')
     {
-        if (\is_array($array) && array_key_exists($key, $array)) {
+        if (is_array($array) && array_key_exists($key, $array)) {
             $domain_key = $key;
         } else {
             $domain_key = '_DEFAULT';
         }
-        if (\is_array($array[$domain_key])) {
+        if (is_array($array[$domain_key])) {
             return $array[$domain_key];
         }
         return $array[$array[$domain_key]];
@@ -217,23 +215,22 @@ class FrontendHook
      */
     private function getDestinationUrl($currentUrl = '', $suffix = '')
     {
-
         $host = GeneralUtility::getIndpEnv('HTTP_HOST');
 
         $uri = $this->getUri($currentUrl);
-        list($script, $option) = explode('?', $uri);
+        list($script) = explode('?', $uri);
 
         // get config for realurl
         $config_realurl = $this->getConfiguration($GLOBALS['TYPO3_CONF_VARS']['EXTCONF']['realurl'], $host);
 
         // fallback if typo3_conf_var_404 not an array
-        if (!\is_array($this->config['redirects'])) {
-            $this->config['redirects'] = array();
+        if (!is_array($this->config['redirects'])) {
+            $this->config['redirects'] = [];
         }
 
         // removes all leading slashes in array
-        if (\count($this->config['redirects']) > 0) {
-            $redirects = array();
+        if (count($this->config['redirects']) > 0) {
+            $redirects = [];
             foreach ($this->config['redirects'] as $key => $val) {
                 $redirects[$this->getUri($key)] = $this->getUri($val);
             }
@@ -241,16 +238,16 @@ class FrontendHook
         }
 
         // First element will be the host
-        $url_array = array();
-        $url_array[] = $host;
+        $url_array = [$host];
         $sitePath = GeneralUtility::getIndpEnv('TYPO3_SITE_PATH');
-        if ($sitePath && \strlen(trim($sitePath, '/')) > 0) {
+
+        if ($sitePath && strlen(trim($sitePath, '/')) > 0) {
             $url_array[] = trim($sitePath, '/');
         }
-        if (\is_array($this->config['redirects']) && array_key_exists($uri, $this->config['redirects'])) {
+        if (is_array($this->config['redirects']) && array_key_exists($uri, $this->config['redirects'])) {
             // There is a redirect defined for this request URI, so the value is taken
             $url_array[] = $this->config['redirects'][$uri];
-        } elseif (\is_array($this->config['redirects']) && array_key_exists($script, $this->config['redirects'])) {
+        } elseif (is_array($this->config['redirects']) && array_key_exists($script, $this->config['redirects'])) {
             // There is a redirect defined for this script, so the value is taken
             $url_array[] = $this->config['redirects'][$script];
         } else {
@@ -260,12 +257,14 @@ class FrontendHook
 
 
             // find language key
-            if (\is_array($config_realurl['preVars'])) {
+            if (is_array($config_realurl['preVars'])) {
                 foreach ($config_realurl['preVars'] as $key => $val) {
-                    if (isset($config_realurl['preVars'][$key]['GETvar']) && $config_realurl['preVars'][$key]['GETvar'] === 'L') {
-
-                        if ($lang != false && \is_array($config_realurl['preVars'][$key]['valueMap']) && array_key_exists($lang,
-                                $config_realurl['preVars'][$key]['valueMap'])
+                    if (isset($config_realurl['preVars'][$key]['GETvar'])
+                        && $config_realurl['preVars'][$key]['GETvar'] === 'L'
+                    ) {
+                        if ($lang != false
+                            && is_array($config_realurl['preVars'][$key]['valueMap'])
+                            && array_key_exists($lang, $config_realurl['preVars'][$key]['valueMap'])
                         ) {
                             $url_array[] = $lang;
                         } elseif ($config_realurl['preVars'][$key]['valueDefault']) {
@@ -301,8 +300,7 @@ class FrontendHook
                     $GLOBALS['TSFE']->fe_user->id .
                     '/' .
                     $GLOBALS['TYPO3_CONF_VARS']['SYS']['encryptionKey']
-                )
-            ;
+                );
         }
 
         /** @var RequestFactory $requestFactory */
@@ -322,10 +320,26 @@ class FrontendHook
      * TODO: Generate nice 404 page
      * @return string
      */
-    private function getProvisionally404Page() {
+    private function getProvisionally404Page()
+    {
         return 'Sorry, but the 404 page was not found! Please check the path to the 404 page.';
     }
 
+    /**
+     * Get mode from extension manager settings
+     *
+     * @return mixed
+     * @throws \TYPO3\CMS\Core\Configuration\Exception\ExtensionConfigurationExtensionNotConfiguredException
+     * @throws \TYPO3\CMS\Core\Configuration\Exception\ExtensionConfigurationPathDoesNotExistException
+     */
+    private function getExtensionMode()
+    {
+        if (version_compare(TYPO3_version, '9.0', '<')) {
+            $extConf = unserialize($GLOBALS['TYPO3_CONF_VARS']['EXT']['extConf']['realurl_404_multilingual']);
 
+            return $extConf['mode'];
+        } else {
+            return GeneralUtility::makeInstance(ExtensionConfiguration::class)->get('realurl_404_multilingual', 'mode');
+        }
+    }
 }
-
